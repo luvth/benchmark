@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+import time
+import statistics
+import subprocess
+import sys
+import argparse
+from itertools import cycle
+import threading
+import queue
+import signal
+
+def spinner_animation(stop_event, message_queue):
+    spinner = cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+    while not stop_event.is_set():
+        status = message_queue.get() if not message_queue.empty() else "Running benchmark"
+        sys.stdout.write(f'\r{next(spinner)} {status}')
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write('\r')
+    sys.stdout.flush()
+
+def run_command(cmd, args):
+    full_cmd = [cmd] + args if args else [cmd]
+    start = time.perf_counter_ns()
+    subprocess.run(full_cmd, capture_output=True)
+    end = time.perf_counter_ns()
+    return (end - start) / 1000
+
+def benchmark(cmd, args=None, iterations=100, warmup=3):
+    stop_spinner = threading.Event()
+    message_queue = queue.Queue()
+    spinner_thread = threading.Thread(
+        target=spinner_animation, 
+        args=(stop_spinner, message_queue)
+    )
+    spinner_thread.start()
+
+    try:
+        message_queue.put("Warming up...")
+        for _ in range(warmup):
+            run_command(cmd, args)
+
+        times = []
+        for i in range(iterations):
+            message_queue.put(f"Progress: {i+1}/{iterations}")
+            execution_time = run_command(cmd, args)
+            times.append(execution_time)
+
+        return {
+            "avg": statistics.mean(times),
+            "min": min(times),
+            "max": max(times),
+            "median": statistics.median(times),
+            "stdev": statistics.stdev(times),
+            "samples": iterations,
+            "total_time": sum(times)
+        }
+    finally:
+        stop_spinner.set()
+        spinner_thread.join()
+
+def format_time(microseconds):
+    if microseconds < 1000:
+        return f"{microseconds:.2f}µs"
+    elif microseconds < 1000000:
+        return f"{microseconds/1000:.2f}ms"
+    else:
+        return f"{microseconds/1000000:.2f}s"
+
+def main():
+    parser = argparse.ArgumentParser(description='Benchmark a command with arguments')
+    parser.add_argument('command', help='Command to benchmark')
+    parser.add_argument('args', nargs='*', help='Arguments for the command')
+    parser.add_argument('-n', '--iterations', type=int, default=100,
+                        help='Number of iterations (default: 100)')
+    parser.add_argument('-w', '--warmup', type=int, default=3,
+                        help='Number of warmup runs (default: 3)')
+    args = parser.parse_args()
+
+    signal.signal(signal.SIGINT, lambda x, y: sys.exit(0))
+
+    try:
+        results = benchmark(args.command, args.args, args.iterations, args.warmup)
+        
+        print("\n\n📊 Benchmark Results:")
+        print("═" * 40)
+        print(f"📌 Command: {args.command} {' '.join(args.args)}")
+        print(f"🔄 Iterations: {results['samples']}")
+        print("─" * 40)
+        print(f"⌛ Average:  {format_time(results['avg'])}")
+        print(f"⚡ Minimum:  {format_time(results['min'])}")
+        print(f"🐢 Maximum:  {format_time(results['max'])}")
+        print(f"📊 Median:   {format_time(results['median'])}")
+        print(f"📏 StdDev:   {format_time(results['stdev'])}")
+        print("─" * 40)
+        print(f"⏱️  Total Time: {format_time(results['total_time'])}")
+        print("═" * 40)
+
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
