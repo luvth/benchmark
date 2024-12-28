@@ -14,15 +14,18 @@ A high-precision benchmarking tool for measuring command execution times with a 
 
 ## Installation
 
-1. CLone the repository
+1. CLone the repository : 
 ```
 git clone https://github.com/luvth/benchmark && cd benchmark
 ```
-2. Run the setup:
+2. Make the setup executable :
 ```bash
 chmod +x setup.sh
 ```
-
+3. Run the setup
+```
+./setup.sh
+```
 ## Usage
 
 Basic usage:
