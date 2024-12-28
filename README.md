@@ -2,6 +2,8 @@
 
 A high-precision benchmarking tool for measuring command execution times with a beautiful CLI interface and spinner animation.
 
+![Benchmark exemple while coding](https://i.imgur.com//0uSiias.png)
+
 ## Features
 
 - Nanosecond-precision timing measurements
