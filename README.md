@@ -2,7 +2,7 @@
 
 A high-precision benchmarking tool for measuring command execution times with a beautiful CLI interface and spinner animation.
 
-![Benchmark exemple while coding](https://i.imgur.com//0uSiias.png)
+![Benchmark exemple while coding](https://i.imgur.com//0uSiias)
 
 ## Features
 
